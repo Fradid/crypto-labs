@@ -36,7 +36,7 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
   polybius: {
     name: 'Квадрат Полібія',
     description: 'Кожна літера замінюється координатами її позиції у квадраті.',
-    keyType: 'string', // No key needed for basic square, but UI needs something. Let's make it keyless or optional
+    keyType: 'string',
     keyLabel: 'Ключ (не використовується)',
     placeholder: 'Без ключа',
     supportsAlphabet: true,
@@ -44,7 +44,7 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
   gronsfeld: {
     name: 'Шифр Гронсфельда',
     description: 'Модифікація шифру Віженера з використанням числового ключа.',
-    keyType: 'number', // Actually a string of digits
+    keyType: 'number',
     keyLabel: 'Числовий ключ',
     placeholder: 'Наприклад: 2015',
     supportsAlphabet: true,
