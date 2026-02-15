@@ -3,6 +3,7 @@ import { CipherType, CipherConfig } from './ciphers/types';
 import { CipherPanel } from './components/CipherPanel';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
+import { AlphabetType } from './ciphers/alphabets';
 
 const cipherConfigs: Record<CipherType, CipherConfig> = {
   caesar: {
@@ -69,10 +70,11 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
 
 function App() {
   const [activeCipher, setActiveCipher] = useState<CipherType>('caesar');
+  const [alphabet, setAlphabet] = useState<AlphabetType>('ukr');
 
   return (
     <div className="app">
-      <Header />
+      <Header alphabet={alphabet} setAlphabet={setAlphabet} />
 
       <main className="main-container">
         <Navigation 
@@ -84,7 +86,8 @@ function App() {
         <div className="content-area">
           <CipherPanel 
             type={activeCipher} 
-            config={cipherConfigs[activeCipher]} 
+            config={cipherConfigs[activeCipher]}
+            alphabet={alphabet}
           />
         </div>
       </main>

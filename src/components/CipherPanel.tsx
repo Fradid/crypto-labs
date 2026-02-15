@@ -11,15 +11,16 @@ import { playfairEncrypt } from '../ciphers/playfair';
 import { vernamEncrypt, generateVernamKey } from '../ciphers/vernam';
 import { MatrixViz } from './MatrixViz';
 import { RailViz } from './RailViz';
-import { RefreshCcw, Copy, Check, Zap, Globe, Wand2 } from 'lucide-react';
-import { AlphabetType, ALPHABET_LABELS } from '../ciphers/alphabets';
+import { RefreshCcw, Copy, Check, Zap, Wand2 } from 'lucide-react';
+import { AlphabetType } from '../ciphers/alphabets';
 
 interface CipherPanelProps {
   type: CipherType;
   config: CipherConfig;
+  alphabet: AlphabetType;
 }
 
-export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
+export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet }) => {
   const [text, setText] = useState('КРИПТОГРАФІЯ2024');
   const [key, setKey] = useState(
     type === 'caesar' ? '5' : 
@@ -30,7 +31,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
     type === 'playfair' ? 'КРИПТО' :
     ''
   );
-  const [alphabet, setAlphabet] = useState<AlphabetType>('ukr');
+
   const [result, setResult] = useState<CipherResult | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -136,21 +137,6 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
       >
         <h2>{config.name}</h2>
         <p>{config.description}</p>
-        
-        <div className="alphabet-selector">
-          <Globe size={16} />
-          <div className="alphabet-buttons">
-            {(Object.keys(ALPHABET_LABELS) as AlphabetType[]).map((alp) => (
-              <button
-                key={alp}
-                className={`alphabet-btn ${alphabet === alp ? 'active' : ''}`}
-                onClick={() => setAlphabet(alp)}
-              >
-                {ALPHABET_LABELS[alp]}
-              </button>
-            ))}
-          </div>
-        </div>
       </motion.div>
 
       <div className="input-section">
