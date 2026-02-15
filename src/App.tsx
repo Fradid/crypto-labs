@@ -49,6 +49,22 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
     placeholder: 'Наприклад: 2015',
     supportsAlphabet: true,
   },
+  playfair: {
+    name: 'Шифр Плейфера',
+    description: 'Біграмний шифр, що шифрує пари літер за допомогою матриці.',
+    keyType: 'string',
+    keyLabel: 'Ключове слово',
+    placeholder: 'Наприклад: КРИПТО',
+    supportsAlphabet: true,
+  },
+  vernam: {
+    name: 'Шифр Вермана',
+    description: 'Шифр ідеальної секретності. Ключ має бути довжиною не менше за текст.',
+    keyType: 'string',
+    keyLabel: 'Випадковий ключ',
+    placeholder: 'Генерується автоматично',
+    supportsAlphabet: true,
+  },
 };
 
 function App() {

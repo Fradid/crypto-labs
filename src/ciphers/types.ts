@@ -25,7 +25,7 @@ export interface RailVisualization {
   chars: string[];
 }
 
-export type CipherType = 'caesar' | 'affine' | 'columnar' | 'railfence' | 'polybius' | 'gronsfeld';
+export type CipherType = 'caesar' | 'affine' | 'columnar' | 'railfence' | 'polybius' | 'gronsfeld' | 'playfair' | 'vernam';
 
 
 

@@ -7,9 +7,11 @@ import { columnarEncrypt } from '../ciphers/columnar';
 import { railFenceEncrypt } from '../ciphers/railfence';
 import { polybiusEncrypt } from '../ciphers/polybius';
 import { gronsfeldEncrypt } from '../ciphers/gronsfeld';
+import { playfairEncrypt } from '../ciphers/playfair';
+import { vernamEncrypt, generateVernamKey } from '../ciphers/vernam';
 import { MatrixViz } from './MatrixViz';
 import { RailViz } from './RailViz';
-import { RefreshCcw, Copy, Check, Zap, Globe } from 'lucide-react';
+import { RefreshCcw, Copy, Check, Zap, Globe, Wand2 } from 'lucide-react';
 import { AlphabetType, ALPHABET_LABELS } from '../ciphers/alphabets';
 
 interface CipherPanelProps {
@@ -19,7 +21,15 @@ interface CipherPanelProps {
 
 export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
   const [text, setText] = useState('КРИПТОГРАФІЯ2024');
-  const [key, setKey] = useState(type === 'caesar' ? '5' : type === 'affine' ? '7,12' : type === 'columnar' ? 'КЛЮЧ' : type === 'gronsfeld' ? '2015' : type === 'railfence' ? '3' : '');
+  const [key, setKey] = useState(
+    type === 'caesar' ? '5' : 
+    type === 'affine' ? '7,12' : 
+    type === 'columnar' ? 'КЛЮЧ' : 
+    type === 'gronsfeld' ? '2015' : 
+    type === 'railfence' ? '3' : 
+    type === 'playfair' ? 'КРИПТО' :
+    ''
+  );
   const [alphabet, setAlphabet] = useState<AlphabetType>('ukr');
   const [result, setResult] = useState<CipherResult | null>(null);
   const [error, setError] = useState('');
@@ -34,6 +44,8 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
       type === 'columnar' ? 'КЛЮЧ' : 
       type === 'gronsfeld' ? '2015' : 
       type === 'railfence' ? '3' : 
+      type === 'playfair' ? 'КРИПТО' :
+      type === 'vernam' ? '' :
       ''
     );
     setError('');
@@ -49,7 +61,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
       setError('');
       setShowBruteForce(false);
 
-      if (!text || (!key && type !== 'polybius')) {
+      if (!text || (!key && type !== 'polybius' && type !== 'vernam')) {
         setResult(null);
         return;
       }
@@ -82,6 +94,14 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
           if (!key.trim()) throw new Error('Введіть числовий ключ');
           res = gronsfeldEncrypt(text, key, alphabet);
           break;
+        case 'playfair':
+           if (!key.trim()) throw new Error('Введіть ключове слово');
+           res = playfairEncrypt(text, key, alphabet);
+           break;
+        case 'vernam':
+           if (!key.trim()) throw new Error('Генеруйте або введіть ключ');
+           res = vernamEncrypt(text, key, alphabet);
+           break;
         default:
           return;
       }
@@ -161,6 +181,17 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
             <RefreshCcw size={16} />
             <span>Оновити</span>
           </button>
+
+          {type === 'vernam' && (
+             <button 
+               className="action-btn secondary" 
+               onClick={() => setKey(generateVernamKey(text.length, alphabet))}
+               title="Згенерувати випадковий ключ довжиною тексту"
+             >
+               <Wand2 size={16} />
+               <span>Gen Key</span>
+             </button>
+           )}
         </div>
 
         {error && (
@@ -361,6 +392,17 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config }) => {
           background: var(--accent-secondary);
           transform: translateY(-1px);
           box-shadow: var(--shadow-glow);
+        }
+
+        .action-btn.secondary {
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-hover);
+          color: var(--text-secondary);
+        }
+
+        .action-btn.secondary:hover {
+           background: var(--bg-hover);
+           color: var(--text-primary);
         }
 
         .error-message {
