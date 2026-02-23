@@ -66,6 +66,13 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
     placeholder: 'Генерується автоматично',
     supportsAlphabet: true,
   },
+  des: {
+    name: 'Алгоритм DES',
+    description: 'Data Encryption Standard. Блочний шифр, що використовує 64-бітні блоки та 56-бітний ключ.',
+    keyType: 'string',
+    keyLabel: 'Ключ (8 символів)',
+    placeholder: 'Наприклад: KEY12345',
+  },
 };
 
 function App() {

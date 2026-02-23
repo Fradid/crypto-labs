@@ -9,6 +9,7 @@ import { polybiusEncrypt } from '../ciphers/polybius';
 import { gronsfeldEncrypt } from '../ciphers/gronsfeld';
 import { playfairEncrypt } from '../ciphers/playfair';
 import { vernamEncrypt, generateVernamKey } from '../ciphers/vernam';
+import { desEncrypt } from '../ciphers/des';
 import { MatrixViz } from './MatrixViz';
 import { RailViz } from './RailViz';
 import { RefreshCcw, Copy, Check, Zap, Wand2 } from 'lucide-react';
@@ -29,6 +30,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
     type === 'gronsfeld' ? '2015' : 
     type === 'railfence' ? '3' : 
     type === 'playfair' ? 'КРИПТО' :
+    type === 'des' ? 'KEY12345' :
     ''
   );
 
@@ -47,6 +49,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
       type === 'railfence' ? '3' : 
       type === 'playfair' ? 'КРИПТО' :
       type === 'vernam' ? '' :
+      type === 'des' ? 'KEY12345' :
       ''
     );
     setError('');
@@ -102,6 +105,10 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
         case 'vernam':
            if (!key.trim()) throw new Error('Генеруйте або введіть ключ');
            res = vernamEncrypt(text, key, alphabet);
+           break;
+        case 'des':
+           if (!key.trim() || key.length < 8) throw new Error('Ключ має бути 8 символів');
+           res = desEncrypt(text, key);
            break;
         default:
           return;
