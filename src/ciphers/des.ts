@@ -95,13 +95,20 @@ const S_BOXES = [
 const SHIFTS = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1];
 
 // Helper functions for binary manipulation
-function stringToBinary(str: string): string {
+function bytesToBinary(bytes: Uint8Array): string {
   let binary = "";
-  for (let i = 0; i < str.length; i++) {
-    const charCode = str.charCodeAt(i);
-    binary += charCode.toString(2).padStart(8, '0');
+  for (let i = 0; i < bytes.length; i++) {
+    binary += bytes[i].toString(2).padStart(8, '0');
   }
   return binary;
+}
+
+function binaryToBytes(binary: string): Uint8Array {
+  const bytes = new Uint8Array(binary.length / 8);
+  for (let i = 0; i < binary.length; i += 8) {
+    bytes[i / 8] = parseInt(binary.substring(i, i + 8), 2);
+  }
+  return bytes;
 }
 
 function binaryToHex(binary: string): string {
@@ -118,15 +125,6 @@ function hexToBinary(hex: string): string {
     binary += parseInt(hex[i], 16).toString(2).padStart(4, '0');
   }
   return binary;
-}
-
-function binaryToString(binary: string): string {
-  let str = "";
-  for (let i = 0; i < binary.length; i += 8) {
-    const charCode = parseInt(binary.substring(i, i + 8), 2);
-    if (charCode !== 0) str += String.fromCharCode(charCode);
-  }
-  return str;
 }
 
 function permute(input: string, table: number[]): string {
@@ -196,38 +194,47 @@ function desBlock(block: string, subkeys: string[], decrypt: boolean): string {
 
 export function desEncrypt(text: string, key: string): CipherResult {
   const steps: CipherStep[] = [];
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
   
-  if (key.length < 8) {
-    throw new Error("Ключ повинен бути не менше 8 символів");
-  }
-
-  const keyBinary = stringToBinary(key.substring(0, 8));
+  // Key preparation (UTF-8)
+  const keyBytes = encoder.encode(key);
+  const desKeyBytes = new Uint8Array(8);
+  desKeyBytes.set(keyBytes.slice(0, 8));
+  
+  const keyBinary = bytesToBinary(desKeyBytes);
   const subkeys = generateSubkeys(keyBinary);
 
+  // Text preparation (UTF-8)
+  const textBytes = encoder.encode(text);
+  
   // PKCS7 Padding
   const blockSize = 8;
-  const padLen = blockSize - (text.length % blockSize);
-  const paddedText = text + String.fromCharCode(padLen).repeat(padLen);
+  const padLen = blockSize - (textBytes.length % blockSize);
+  const paddedBytes = new Uint8Array(textBytes.length + padLen);
+  paddedBytes.set(textBytes);
+  for (let i = 0; i < padLen; i++) {
+    paddedBytes[textBytes.length + i] = padLen;
+  }
   
   let encryptedBinary = "";
-  const blocksCount = paddedText.length / 8;
+  const blocksCount = paddedBytes.length / blockSize;
 
   for (let i = 0; i < blocksCount; i++) {
-    const block = stringToBinary(paddedText.substring(i * 8, (i + 1) * 8));
+    const block = bytesToBinary(paddedBytes.slice(i * blockSize, (i + 1) * blockSize));
     encryptedBinary += desBlock(block, subkeys, false);
   }
 
   steps.push({
     title: 'Генерація ключів',
-    description: `Сгенеровано 16 раундових ключів з пароля: ${key.substring(0, 8)}`,
+    description: `Згенеровано 16 раундових ключів`,
   });
 
   steps.push({
     title: 'Доповнення та розбиття',
-    description: `Текст доповнено до ${paddedText.length} байт і розділено на ${blocksCount} блок(ів).`,
+    description: `Текст конвертовано в UTF-8 (${textBytes.length} байт), доповнено до ${paddedBytes.length} байт і розділено на ${blocksCount} блок(ів).`,
   });
 
-  // Simplified steps for visualization of one block
   steps.push({
     title: 'Процес шифрування (один блок)',
     description: 'Виконано початкову перестановку IP, 16 раундів мережі Фейстеля та фінальну перестановку FP.',
@@ -236,17 +243,22 @@ export function desEncrypt(text: string, key: string): CipherResult {
   const encrypted = binaryToHex(encryptedBinary);
 
   // Decryption for validation
-  let decryptedBinary = "";
+  let decryptedBinaryString = "";
   for (let i = 0; i < blocksCount; i++) {
     const blockHex = encrypted.substring(i * 16, (i + 1) * 16);
-    decryptedBinary += desBlock(hexToBinary(blockHex), subkeys, true);
+    decryptedBinaryString += desBlock(hexToBinary(blockHex), subkeys, true);
   }
 
-  const decryptedPadded = binaryToString(decryptedBinary);
-  const finalPadLen = decryptedPadded.charCodeAt(decryptedPadded.length - 1);
-  const decrypted = (finalPadLen > 0 && finalPadLen <= 8) 
-    ? decryptedPadded.substring(0, decryptedPadded.length - finalPadLen)
-    : decryptedPadded;
+  const decryptedPaddedBytes = binaryToBytes(decryptedBinaryString);
+  const finalPadLen = decryptedPaddedBytes[decryptedPaddedBytes.length - 1];
+  
+  let decrypted = "";
+  try {
+    const finalBytes = decryptedPaddedBytes.slice(0, decryptedPaddedBytes.length - finalPadLen);
+    decrypted = decoder.decode(finalBytes);
+  } catch (e) {
+    decrypted = "Помилка декодування UTF-8";
+  }
 
   return { encrypted, decrypted, steps };
 }
