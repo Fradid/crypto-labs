@@ -73,6 +73,13 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
     keyLabel: 'Ключ (8 символів)',
     placeholder: 'Наприклад: KEY12345',
   },
+  rsa: {
+    name: 'Алгоритм RSA',
+    description: 'Асиметричний алгоритм шифрування. Використовує пару ключів: публічний (n, e) та приватний (n, d).',
+    keyType: 'string',
+    keyLabel: 'Ключ (n, e або n, d)',
+    placeholder: 'n, e (для зашифрування)',
+  },
 };
 
 function App() {

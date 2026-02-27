@@ -10,9 +10,10 @@ import { gronsfeldEncrypt } from '../ciphers/gronsfeld';
 import { playfairEncrypt } from '../ciphers/playfair';
 import { vernamEncrypt, generateVernamKey } from '../ciphers/vernam';
 import { desEncrypt } from '../ciphers/des';
+import { rsaEncrypt, rsaDecrypt, generateRSAKeys } from '../ciphers/rsa';
 import { MatrixViz } from './MatrixViz';
 import { RailViz } from './RailViz';
-import { RefreshCcw, Copy, Check, Zap, Wand2 } from 'lucide-react';
+import { RefreshCcw, Copy, Check, Zap, Wand2, Key } from 'lucide-react';
 import { AlphabetType } from '../ciphers/alphabets';
 
 interface CipherPanelProps {
@@ -31,8 +32,10 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
     type === 'railfence' ? '3' : 
     type === 'playfair' ? 'КРИПТО' :
     type === 'des' ? 'KEY12345' :
+    type === 'rsa' ? '' :
     ''
   );
+  const [rsaMode, setRsaMode] = useState<'encrypt' | 'decrypt'>('encrypt');
 
   const [result, setResult] = useState<CipherResult | null>(null);
   const [error, setError] = useState('');
@@ -50,6 +53,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
       type === 'playfair' ? 'КРИПТО' :
       type === 'vernam' ? '' :
       type === 'des' ? 'KEY12345' :
+      type === 'rsa' ? '' :
       ''
     );
     setError('');
@@ -57,8 +61,12 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
   }, [type]);
 
   useEffect(() => {
-    handleEncrypt();
-  }, [text, key, alphabet]);
+    if (type === 'rsa' && rsaMode === 'decrypt') {
+      handleRSADecrypt();
+    } else {
+      handleEncrypt();
+    }
+  }, [text, key, alphabet, rsaMode]);
 
   const handleEncrypt = () => {
     try {
@@ -110,6 +118,12 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
            if (!key.trim() || key.length < 8) throw new Error('Ключ має бути 8 символів');
            res = desEncrypt(text, key);
            break;
+        case 'rsa': {
+           const [n, e] = key.split(',').map(s => s.trim());
+           if (!n || !e) throw new Error('Введіть ключ у форматі n, e');
+           res = rsaEncrypt(text, n, e);
+           break;
+        }
         default:
           return;
       }
@@ -129,11 +143,44 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
     }
   };
 
+  const handleRSADecrypt = () => {
+    try {
+      setError('');
+      if (!text || !key) {
+        setResult(null);
+        return;
+      }
+      const [n, d] = key.split(',').map(s => s.trim());
+      if (!n || !d) throw new Error('Введіть приватний ключ у форматі n, d');
+      const dec = rsaDecrypt(text, n, d);
+      
+      // Check if output looks like garbage (common for wrong RSA key)
+      const isGarbage = /[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(dec);
+      
+      setResult({
+        encrypted: text,
+        decrypted: dec,
+        steps: [
+          { 
+            title: 'Розшифрування', 
+            description: isGarbage 
+              ? 'Увага! Отримано некоректні символи. Перевірте, чи ви використовуєте саме ПРИВАТНИЙ ключ (n, d) для дешифрування, а не публічний.'
+              : 'Виконано m = c^d mod n для кожного байту.' 
+          }
+        ]
+      });
+    } catch (err: any) {
+      setError(err.message || 'Помилка RSA дешифрування');
+      setResult(null);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -148,11 +195,13 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
 
       <div className="input-section">
         <div className="input-group">
-          <label>Відкритий текст</label>
+          <label>
+            {type === 'rsa' && rsaMode === 'decrypt' ? 'Шифротекст (числа через пробіл)' : 'Відкритий текст'}
+          </label>
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value.toUpperCase())}
-            placeholder="Введіть текст для шифрування..."
+            onChange={(e) => setText(type === 'rsa' ? e.target.value : e.target.value.toUpperCase())}
+            placeholder={type === 'rsa' && rsaMode === 'decrypt' ? 'Вставте числа для розшифрування...' : 'Введіть текст...'}
             className="text-input"
             rows={3}
           />
@@ -160,12 +209,18 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
 
         <div className="input-row">
           <div className="input-group key-input">
-            <label>{config.keyLabel}</label>
+            <label>
+              {type === 'rsa' 
+                ? (rsaMode === 'encrypt' ? 'Публічний ключ (n, e)' : 'Приватний ключ (n, d)')
+                : config.keyLabel}
+            </label>
             <input
               type={config.keyType === 'number' || config.keyType === 'rails' ? 'number' : 'text'}
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder={config.placeholder}
+              placeholder={type === 'rsa' 
+                ? (rsaMode === 'encrypt' ? 'n, e' : 'n, d')
+                : config.placeholder}
               className="key-field"
             />
           </div>
@@ -175,14 +230,29 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
             <span>Оновити</span>
           </button>
 
-          {type === 'vernam' && (
+           {type === 'vernam' && (
+              <button 
+                className="action-btn secondary" 
+                onClick={() => setKey(generateVernamKey(text.length, alphabet))}
+                title="Згенерувати випадковий ключ довжиною тексту"
+              >
+                <Wand2 size={16} />
+                <span>Gen Key</span>
+              </button>
+            )}
+
+           {type === 'rsa' && (
              <button 
                className="action-btn secondary" 
-               onClick={() => setKey(generateVernamKey(text.length, alphabet))}
-               title="Згенерувати випадковий ключ довжиною тексту"
+               onClick={() => {
+                 const keys = generateRSAKeys();
+                 setKey(`${keys.n}, ${keys.e}`);
+                 alert(`Згенеровано ключі!\nПублічний (зашифрування): ${keys.n}, ${keys.e}\nПриватний (розшифрування): ${keys.n}, ${keys.d}\n\nЗбережіть приватний ключ!`);
+               }}
+               title="Згенерувати пару ключів RSA"
              >
-               <Wand2 size={16} />
-               <span>Gen Key</span>
+               <Key size={16} />
+               <span>Gen Keys</span>
              </button>
            )}
         </div>
@@ -208,13 +278,27 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
             <div className="result-card encrypted">
               <div className="result-label">
                 <span>Шифротекст</span>
-                <button 
-                  className="icon-btn"
-                  onClick={() => copyToClipboard(result.encrypted)}
-                  title="Копіювати"
-                >
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                </button>
+                <div className="flex gap-2">
+                  {type === 'rsa' && (
+                    <button 
+                      className="icon-btn"
+                      onClick={() => {
+                        setText(result.encrypted);
+                        setRsaMode('decrypt');
+                      }}
+                      title="Перенести для дешифрування"
+                    >
+                      <RefreshCcw size={14} />
+                    </button>
+                  )}
+                  <button 
+                    className="icon-btn"
+                    onClick={() => copyToClipboard(result.encrypted)}
+                    title="Копіювати"
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
               </div>
               <div className="result-value">{result.encrypted}</div>
             </div>
@@ -252,6 +336,24 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
                 ))}
               </div>
             </motion.div>
+          )}
+          {type === 'rsa' && (
+            <div className="rsa-mode-toggle">
+              <button 
+                className={`mode-btn ${rsaMode === 'encrypt' ? 'active' : ''}`}
+                onClick={() => setRsaMode('encrypt')}
+              >
+                <Zap size={14} />
+                Шифрування
+              </button>
+              <button 
+                className={`mode-btn ${rsaMode === 'decrypt' ? 'active' : ''}`}
+                onClick={() => setRsaMode('decrypt')}
+              >
+                <RefreshCcw size={14} />
+                Дешифрування
+              </button>
+            </div>
           )}
 
           <div className="steps-section">
@@ -642,6 +744,41 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
 
         .alphabet-btn:hover:not(.active) {
           border-color: var(--text-secondary);
+          color: var(--text-secondary);
+        }
+
+        .rsa-mode-toggle {
+          display: flex;
+          background: var(--bg-secondary);
+          padding: 0.25rem;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-subtle);
+          width: fit-content;
+          margin-top: 0.5rem;
+        }
+
+        .mode-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.4rem 1rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-tertiary);
+          background: transparent;
+          border: none;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+          background: var(--bg-tertiary);
+          color: var(--accent-primary);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .mode-btn:hover:not(.active) {
           color: var(--text-secondary);
         }
       `}</style>

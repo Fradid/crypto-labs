@@ -1,5 +1,5 @@
 import { CipherConfig } from '../ciphers/types';
-import { Lock, Key, ArrowLeftRight, Fence, Grid, Hash, Table2, ShieldAlert, Activity } from 'lucide-react';
+import { Lock, Key, ArrowLeftRight, Fence, Grid, Hash, Table2, ShieldAlert, Activity, FileKey } from 'lucide-react';
 import { CipherType } from '../ciphers/types';
 
 interface NavigationProps {
@@ -18,6 +18,7 @@ const icons: Record<CipherType, React.ReactNode> = {
   playfair: <Table2 size={18} />,
   vernam: <ShieldAlert size={18} />,
   des: <Activity size={18} />,
+  rsa: <FileKey size={18} />,
 };
 
 export const Navigation: React.FC<NavigationProps> = ({ configs, active, onSelect }) => {
@@ -45,6 +46,7 @@ export const Navigation: React.FC<NavigationProps> = ({ configs, active, onSelec
                 {type === 'playfair' && 'Біграмний'}
                 {type === 'vernam' && 'OTP'}
                 {type === 'des' && 'Блочний'}
+                {type === 'rsa' && 'Асиметричний'}
               </span>
             </div>
           </button>
