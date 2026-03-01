@@ -11,9 +11,10 @@ import { playfairEncrypt } from '../ciphers/playfair';
 import { vernamEncrypt, generateVernamKey } from '../ciphers/vernam';
 import { desEncrypt } from '../ciphers/des';
 import { rsaEncrypt, rsaDecrypt, generateRSAKeys } from '../ciphers/rsa';
+import { rsaSign, rsaVerify } from '../ciphers/rsa_sig';
 import { MatrixViz } from './MatrixViz';
 import { RailViz } from './RailViz';
-import { RefreshCcw, Copy, Check, Zap, Wand2, Key } from 'lucide-react';
+import { RefreshCcw, Copy, Check, Zap, Wand2, Key, ShieldAlert } from 'lucide-react';
 import { AlphabetType } from '../ciphers/alphabets';
 
 interface CipherPanelProps {
@@ -33,15 +34,18 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
     type === 'playfair' ? 'КРИПТО' :
     type === 'des' ? 'KEY12345' :
     type === 'rsa' ? '' :
+    type === 'rsa_sig' ? '' :
     ''
   );
   const [rsaMode, setRsaMode] = useState<'encrypt' | 'decrypt'>('encrypt');
+  const [sigVerification, setSigVerification] = useState<{ isValid: boolean, message: string } | null>(null);
 
   const [result, setResult] = useState<CipherResult | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [showBruteForce, setShowBruteForce] = useState(false);
   const [bruteResults, setBruteResults] = useState<Array<{ key: number; result: string }>>([]);
+  const [signature, setSignature] = useState('');
 
   useEffect(() => {
     setKey(
@@ -54,15 +58,19 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
       type === 'vernam' ? '' :
       type === 'des' ? 'KEY12345' :
       type === 'rsa' ? '' :
+      type === 'rsa_sig' ? '' :
       ''
     );
     setError('');
     setResult(null);
+    setSigVerification(null);
   }, [type]);
 
   useEffect(() => {
     if (type === 'rsa' && rsaMode === 'decrypt') {
       handleRSADecrypt();
+    } else if (type === 'rsa_sig' && rsaMode === 'decrypt') {
+      handleRSASigVerify();
     } else {
       handleEncrypt();
     }
@@ -124,6 +132,12 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
            res = rsaEncrypt(text, n, e);
            break;
         }
+        case 'rsa_sig': {
+           const [n, d] = key.split(',').map(s => s.trim());
+           if (!n || !d) throw new Error('Введіть ключ у форматі n, d');
+           res = rsaSign(text, n, d);
+           break;
+        }
         default:
           return;
       }
@@ -175,6 +189,29 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
     }
   };
 
+  const handleRSASigVerify = () => {
+    try {
+      setError('');
+      if (!text || !key || !signature) {
+        setResult(null);
+        return;
+      }
+      const [n, e] = key.split(',').map(s => s.trim());
+      if (!n || !e) throw new Error('Введіть ключ у форматі n, e');
+      
+      const { isValid, steps } = rsaVerify(text, signature, n, e);
+      setSigVerification({ isValid, message: isValid ? 'Підпис вірний' : 'Підпис невірний' });
+      setResult({
+        encrypted: signature,
+        decrypted: text,
+        steps
+      });
+    } catch (err: any) {
+      setError(err.message || 'Помилка RSA верифікації');
+      setResult(null);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -196,21 +233,36 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
       <div className="input-section">
         <div className="input-group">
           <label>
-            {type === 'rsa' && rsaMode === 'decrypt' ? 'Шифротекст (числа через пробіл)' : 'Відкритий текст'}
+            {type === 'rsa' && rsaMode === 'decrypt' ? 'Шифротекст (числа через пробіл)' : 
+             type === 'rsa_sig' && rsaMode === 'decrypt' ? 'Оригінальний текст' : 'Відкритий текст'}
           </label>
           <textarea
             value={text}
-            onChange={(e) => setText(type === 'rsa' ? e.target.value : e.target.value.toUpperCase())}
-            placeholder={type === 'rsa' && rsaMode === 'decrypt' ? 'Вставте числа для розшифрування...' : 'Введіть текст...'}
+            onChange={(e) => setText(type === 'rsa' || type === 'rsa_sig' ? e.target.value : e.target.value.toUpperCase())}
+            placeholder={type === 'rsa' && rsaMode === 'decrypt' ? 'Вставте числа для розшифрування...' : 
+                         type === 'rsa_sig' && rsaMode === 'decrypt' ? 'Введіть текст для перевірки...' : 'Введіть текст...'}
             className="text-input"
             rows={3}
           />
         </div>
 
+        {type === 'rsa_sig' && rsaMode === 'decrypt' && (
+          <div className="input-group">
+            <label>Підпис для перевірки</label>
+            <textarea
+              value={signature}
+              onChange={(e) => setSignature(e.target.value)}
+              placeholder="Вставте згенерований підпис..."
+              className="text-input"
+              rows={2}
+            />
+          </div>
+        )}
+
         <div className="input-row">
           <div className="input-group key-input">
             <label>
-              {type === 'rsa' 
+              {type === 'rsa' || type === 'rsa_sig'
                 ? (rsaMode === 'encrypt' ? 'Публічний ключ (n, e)' : 'Приватний ключ (n, d)')
                 : config.keyLabel}
             </label>
@@ -218,7 +270,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
               type={config.keyType === 'number' || config.keyType === 'rails' ? 'number' : 'text'}
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder={type === 'rsa' 
+              placeholder={type === 'rsa' || type === 'rsa_sig'
                 ? (rsaMode === 'encrypt' ? 'n, e' : 'n, d')
                 : config.placeholder}
               className="key-field"
@@ -238,18 +290,24 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
               >
                 <Wand2 size={16} />
                 <span>Gen Key</span>
-              </button>
-            )}
+           </button>
+ 
+           )}
 
-           {type === 'rsa' && (
+           {(type === 'rsa' || type === 'rsa_sig') && (
              <button 
                className="action-btn secondary" 
                onClick={() => {
                  const keys = generateRSAKeys();
-                 setKey(`${keys.n}, ${keys.e}`);
-                 alert(`Згенеровано ключі!\nПублічний (зашифрування): ${keys.n}, ${keys.e}\nПриватний (розшифрування): ${keys.n}, ${keys.d}\n\nЗбережіть приватний ключ!`);
+                 if (type === 'rsa_sig') {
+                   setKey(`${keys.n}, ${keys.d}`);
+                   alert(`Згенеровано ключі ЕЦП!\nПриватний (для підпису): ${keys.n}, ${keys.d}\nПублічний (для перевірки): ${keys.n}, ${keys.e}`);
+                 } else {
+                   setKey(`${keys.n}, ${keys.e}`);
+                   alert(`Згенеровано ключі RSA!\nПублічний (зашифрування): ${keys.n}, ${keys.e}\nПриватний (розшифрування): ${keys.n}, ${keys.d}`);
+                 }
                }}
-               title="Згенерувати пару ключів RSA"
+               title="Згенерувати пару ключів"
              >
                <Key size={16} />
                <span>Gen Keys</span>
@@ -277,16 +335,21 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
           <div className="result-cards">
             <div className="result-card encrypted">
               <div className="result-label">
-                <span>Шифротекст</span>
+                <span>{type === 'rsa_sig' ? 'Цифровий підпис' : 'Шифротекст'}</span>
                 <div className="flex gap-2">
-                  {type === 'rsa' && (
+                  {(type === 'rsa' || type === 'rsa_sig') && (
                     <button 
                       className="icon-btn"
                       onClick={() => {
-                        setText(result.encrypted);
-                        setRsaMode('decrypt');
+                        if (type === 'rsa_sig') {
+                          setSignature(result.encrypted);
+                          setRsaMode('decrypt');
+                        } else {
+                          setText(result.encrypted);
+                          setRsaMode('decrypt');
+                        }
                       }}
-                      title="Перенести для дешифрування"
+                      title={type === 'rsa_sig' ? "Перенести підпис для перевірки" : "Перенести для дешифрування"}
                     >
                       <RefreshCcw size={14} />
                     </button>
@@ -308,9 +371,20 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
                 <span>Розшифрований</span>
                 <Check size={14} className="success-icon" />
               </div>
-              <div className="result-value">{result.decrypted}</div>
+               <div className="result-value">{result.decrypted}</div>
             </div>
           </div>
+
+          {type === 'rsa_sig' && sigVerification && (
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`sig-status ${sigVerification.isValid ? 'valid' : 'invalid'}`}
+            >
+              {sigVerification.isValid ? <Check size={20} /> : <ShieldAlert size={20} />}
+              <span>{sigVerification.message}</span>
+            </motion.div>
+          )}
 
           {type === 'caesar' && (
             <button className="brute-force-btn" onClick={handleBruteForce}>
@@ -337,21 +411,21 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
               </div>
             </motion.div>
           )}
-          {type === 'rsa' && (
+          {(type === 'rsa' || type === 'rsa_sig') && (
             <div className="rsa-mode-toggle">
               <button 
                 className={`mode-btn ${rsaMode === 'encrypt' ? 'active' : ''}`}
                 onClick={() => setRsaMode('encrypt')}
               >
                 <Zap size={14} />
-                Шифрування
+                {type === 'rsa_sig' ? 'Підпис' : 'Шифрування'}
               </button>
               <button 
                 className={`mode-btn ${rsaMode === 'decrypt' ? 'active' : ''}`}
                 onClick={() => setRsaMode('decrypt')}
               >
                 <RefreshCcw size={14} />
-                Дешифрування
+                {type === 'rsa_sig' ? 'Перевірка' : 'Дешифрування'}
               </button>
             </div>
           )}
@@ -780,6 +854,29 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
 
         .mode-btn:hover:not(.active) {
           color: var(--text-secondary);
+        }
+
+        .sig-status {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          border-radius: var(--radius-lg);
+          font-weight: 600;
+          font-size: 1rem;
+          justify-content: center;
+        }
+
+        .sig-status.valid {
+          background: rgba(34, 197, 94, 0.1);
+          color: var(--success);
+          border: 1px solid var(--success);
+        }
+
+        .sig-status.invalid {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border: 1px solid #ef4444;
         }
       `}</style>
     </div>

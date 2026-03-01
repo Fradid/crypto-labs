@@ -80,6 +80,13 @@ const cipherConfigs: Record<CipherType, CipherConfig> = {
     keyLabel: 'Ключ (n, e або n, d)',
     placeholder: 'n, e (для зашифрування)',
   },
+  rsa_sig: {
+    name: 'ЕЦП RSA',
+    description: 'Електронний цифровий підпис. Використовує приватний ключ для підпису та публічний для перевірки.',
+    keyType: 'string',
+    keyLabel: 'Ключ (n, d або n, e)',
+    placeholder: 'n, d (для підпису)',
+  },
 };
 
 function App() {
