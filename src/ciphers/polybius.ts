@@ -35,6 +35,7 @@ export function polybiusEncrypt(text: string, alphabetKey: AlphabetType = 'ukr')
     visualization: {
       type: 'matrix',
       headers: Array.from({ length: size }, (_, i) => (i + 1).toString()),
+      sideHeaders: Array.from({ length: size }, (_, i) => (i + 1).toString()),
       rows: grid,
       readOrder: [],
     }

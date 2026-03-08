@@ -1,21 +1,19 @@
 import { CipherResult, CipherStep } from './types';
 
-// Simple SHA-256 implementation (synchronous)
 function sha256(ascii: string): string {
     function rightRotate(value: number, amount: number) {
         return (value >>> amount) | (value << (32 - amount));
     }
     
-    const words: number[] = [];
-    const asciiLen = ascii.length * 8;
     const s = encoder.encode(ascii);
+    const words = new Int32Array(((s.length + 8) >> 6) + 1 << 4);
     
     for (let i = 0; i < s.length; i++) {
         words[i >> 2] |= s[i] << (24 - (i % 4) * 8);
     }
     
     words[s.length >> 2] |= 0x80 << (24 - (s.length % 4) * 8);
-    words[(((s.length + 8) >> 6) << 4) + 15] = asciiLen;
+    words[words.length - 1] = s.length * 8;
     
     let hash = [
         0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -34,7 +32,9 @@ function sha256(ascii: string): string {
     ];
     
     for (let i = 0; i < words.length; i += 16) {
-        const w = words.slice(i, i + 16);
+        const w = new Int32Array(64);
+        for (let j = 0; j < 16; j++) w[j] = words[i + j];
+        
         for (let j = 16; j < 64; j++) {
             const s0 = rightRotate(w[j - 15], 7) ^ rightRotate(w[j - 15], 18) ^ (w[j - 15] >>> 3);
             const s1 = rightRotate(w[j - 2], 17) ^ rightRotate(w[j - 2], 19) ^ (w[j - 2] >>> 10);
@@ -102,6 +102,7 @@ export function rsaSign(text: string, nStr: string, dStr: string): CipherResult 
   const h = BigInt('0x' + hashHex);
   
   // 3. Sign the hash: s = h^d mod n
+  // NOTE: modulo RSA signs the hash modulo n if hash > n
   const s = power(h, d, n);
   
   steps.push({
@@ -124,10 +125,11 @@ export function rsaVerify(text: string, signature: string, nStr: string, eStr: s
   // 1. Recalculate hash of original message
   const hashHex = sha256(text);
   const targetH = BigInt('0x' + hashHex);
+  const targetHModN = targetH % n;
   
   steps.push({
     title: 'Хешування оригіналу',
-    description: `Отримане повідомлення хешовано. Очікуваний хеш: ${hashHex}`
+    description: `Отримане повідомлення хешовано. Очікуваний хеш (mod n): ${targetHModN.toString()}`
   });
 
   // 2. Verify signature: h' = s^e mod n
@@ -138,7 +140,7 @@ export function rsaVerify(text: string, signature: string, nStr: string, eStr: s
     description: `Обчислено h' = s^e mod n. Отримане число: ${recoveredH.toString()}`
   });
 
-  const isValid = recoveredH === targetH;
+  const isValid = recoveredH === targetHModN;
   
   steps.push({
     title: 'Результат перевірки',

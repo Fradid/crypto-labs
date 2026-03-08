@@ -13,6 +13,7 @@ export interface CipherStep {
 export interface MatrixVisualization {
   type: 'matrix';
   headers: string[];
+  sideHeaders?: string[];
   rows: string[][];
   readOrder?: number[];
   highlightCol?: number;

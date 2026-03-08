@@ -6,7 +6,7 @@ interface MatrixVizProps {
 }
 
 export const MatrixViz: React.FC<MatrixVizProps> = ({ data }) => {
-  const { headers, rows, readOrder } = data;
+  const { headers, sideHeaders, rows, readOrder } = data;
 
   // Determine column order for display
   const sortedIndices = readOrder 
@@ -18,6 +18,9 @@ export const MatrixViz: React.FC<MatrixVizProps> = ({ data }) => {
       <div className="matrix-container">
         {/* Header */}
         <div className="matrix-row header">
+          {sideHeaders && (
+            <div className="matrix-cell header-cell corner-cell" />
+          )}
           {headers.map((h, i) => (
             <div 
               key={i} 
@@ -34,6 +37,11 @@ export const MatrixViz: React.FC<MatrixVizProps> = ({ data }) => {
         {/* Rows */}
         {rows.map((row, rowIdx) => (
           <div key={rowIdx} className="matrix-row">
+            {sideHeaders && (
+              <div className="matrix-cell header-cell side-cell">
+                {sideHeaders[rowIdx]}
+              </div>
+            )}
             {row.map((cell, colIdx) => (
               <div 
                 key={colIdx} 

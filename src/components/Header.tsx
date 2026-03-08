@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({ alphabet, setAlphabet }) => {
             <BookOpen size={16} />
             <span>Довідка</span>
           </a>
-          <a href="#" className="nav-link">
+          <a href="https://github.com/Fradid/crypto-labs" target="_blank" rel="noopener noreferrer" className="nav-link">
             <Github size={16} />
             <span>GitHub</span>
           </a>

@@ -74,7 +74,7 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
     } else {
       handleEncrypt();
     }
-  }, [text, key, alphabet, rsaMode]);
+  }, [text, key, alphabet, rsaMode, signature]);
 
   const handleEncrypt = () => {
     try {
@@ -262,16 +262,20 @@ export const CipherPanel: React.FC<CipherPanelProps> = ({ type, config, alphabet
         <div className="input-row">
           <div className="input-group key-input">
             <label>
-              {type === 'rsa' || type === 'rsa_sig'
-                ? (rsaMode === 'encrypt' ? 'Публічний ключ (n, e)' : 'Приватний ключ (n, d)')
-                : config.keyLabel}
+              {type === 'rsa' 
+                ? (rsaMode === 'encrypt' ? 'Публічний ключ (n, e)' : 'Приватний ключ (n, d)') :
+               type === 'rsa_sig'
+                ? (rsaMode === 'encrypt' ? 'Приватний ключ (n, d)' : 'Публічний ключ (n, e)')
+                : config.name.toUpperCase() + ' КЛЮЧ'}
             </label>
             <input
               type={config.keyType === 'number' || config.keyType === 'rails' ? 'number' : 'text'}
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder={type === 'rsa' || type === 'rsa_sig'
-                ? (rsaMode === 'encrypt' ? 'n, e' : 'n, d')
+              placeholder={type === 'rsa' 
+                ? (rsaMode === 'encrypt' ? 'n, e' : 'n, d') :
+                type === 'rsa_sig'
+                ? (rsaMode === 'encrypt' ? 'n, d' : 'n, e')
                 : config.placeholder}
               className="key-field"
             />
